@@ -8,6 +8,10 @@ namespace Register.Models
 {
     public class ChangePassword
     {
+        [Display(Name = "User Email ID")]
+        [Required(AllowEmptyStrings = false, ErrorMessage = "User Email Id Required")]
+        public string EmailId { get; set; }
+
         [Required(AllowEmptyStrings = false, ErrorMessage = "OTP is requierd")]
         public string OTP { get; set; }
 

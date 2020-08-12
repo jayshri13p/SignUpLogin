@@ -12,6 +12,8 @@ namespace Register.DBContent
     using System;
     using System.Data.Entity;
     using System.Data.Entity.Infrastructure;
+    using System.Data.Entity.Core.Objects;
+    using System.Linq;
     
     public partial class DBModel : DbContext
     {
@@ -26,5 +28,44 @@ namespace Register.DBContent
         }
     
         public virtual DbSet<UserM> UserMs { get; set; }
+    
+        public virtual int sp_ChangePass(string changep, string email)
+        {
+            var changepParameter = changep != null ?
+                new ObjectParameter("changep", changep) :
+                new ObjectParameter("changep", typeof(string));
+    
+            var emailParameter = email != null ?
+                new ObjectParameter("Email", email) :
+                new ObjectParameter("Email", typeof(string));
+    
+            return ((IObjectContextAdapter)this).ObjectContext.ExecuteFunction("sp_ChangePass", changepParameter, emailParameter);
+        }
+    
+        public virtual ObjectResult<UserM> ChangePass(string changep, string email)
+        {
+            var changepParameter = changep != null ?
+                new ObjectParameter("changep", changep) :
+                new ObjectParameter("changep", typeof(string));
+    
+            var emailParameter = email != null ?
+                new ObjectParameter("Email", email) :
+                new ObjectParameter("Email", typeof(string));
+    
+            return ((IObjectContextAdapter)this).ObjectContext.ExecuteFunction<UserM>("ChangePass", changepParameter, emailParameter);
+        }
+    
+        public virtual ObjectResult<UserM> ChangePass(string changep, string email, MergeOption mergeOption)
+        {
+            var changepParameter = changep != null ?
+                new ObjectParameter("changep", changep) :
+                new ObjectParameter("changep", typeof(string));
+    
+            var emailParameter = email != null ?
+                new ObjectParameter("Email", email) :
+                new ObjectParameter("Email", typeof(string));
+    
+            return ((IObjectContextAdapter)this).ObjectContext.ExecuteFunction<UserM>("ChangePass", mergeOption, changepParameter, emailParameter);
+        }
     }
 }

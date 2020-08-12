@@ -10,12 +10,17 @@ using System.Web.Mvc;
 using System.Web.Security;
 using WebMatrix.WebData;
 using System.Data.Entity;
+using Microsoft.Ajax.Utilities;
+using System.Data.SqlClient;
+using System.Data;
 
 namespace Register.Controllers
 {
     public class RegisterController : Controller
     {
+        string cnnString = System.Configuration.ConfigurationManager.ConnectionStrings["DBModel1"].ConnectionString;
         DBModel dB = new DBModel();
+        string changemail;
         // GET: Register
         [ActionName("Index")]
         public ActionResult Index1(UserM objUsr)
@@ -52,6 +57,13 @@ namespace Register.Controllers
             var IsCheck = dB.UserMs.Where(email => email.Email == eMail).FirstOrDefault();
             return IsCheck != null;
         }
+        public bool IsOTPExists(string otp)
+        {
+
+            var IsCheck = dB.UserMs.Where(x => x.OTP == otp).FirstOrDefault();
+            return IsCheck != null;
+        }
+
         public void SendEmailToUser(string emailId, string activationCode)
         {
             var GenarateUserVerificationLink = "/Register/UserVerification/" + activationCode;
@@ -111,7 +123,7 @@ namespace Register.Controllers
             return View();
         }
         #endregion
-
+        [HttpGet]
         public ActionResult ForgetPassword()
         {
             return View();
@@ -126,6 +138,10 @@ namespace Register.Controllers
                 ModelState.AddModelError("EmailNotExists", "This email is not exists");
                 return View();
             }
+
+            //HttpContext.Session.SetString("emailid", pass.EmailId.ToString());
+            
+            changemail = pass.EmailId;
             var objUsr = dB.UserMs.Where(x => x.Email == pass.EmailId).FirstOrDefault();
 
             // Genrate OTP   
@@ -137,7 +153,7 @@ namespace Register.Controllers
             dB.SaveChanges();
 
             ForgetPasswordEmailToUser(objUsr.Email, objUsr.ActivetionCode.ToString(), objUsr.OTP);
-            return RedirectToAction("ChangePassword", "Register");
+            return RedirectToAction("ChangePassword", "Register",new { EmailId = pass.EmailId});
         }
 
         [Authorize]
@@ -218,19 +234,44 @@ namespace Register.Controllers
             smtp.Send(Message);
         }
 
-        public ActionResult ChangePassword()
+        public ActionResult ChangePassword(ForgetPassword forgetPassword)
         {
+            changemail = forgetPassword.EmailId;
             return View();
         }
 
         [HttpPost]
         public ActionResult ChangePassword(UserM objUsr, UserLogin LgnUsr,ChangePassword changeP,ForgetPassword pass)
         {
-            var _passWord = Register.Models.EncryptPassword.textToEncrypt(changeP.Password);
-            var objUsrvar = dB.UserMs.Where(x => x.Email == pass.EmailId).FirstOrDefault();
-            objUsrvar.Password = changeP.Password;
-            dB.SaveChanges();
-            return View();
+            var IsExists = IsEmailExists(pass.EmailId);
+            if (!IsExists)
+            {
+                var IsOTP = IsOTPExists(changeP.OTP);
+                if (!IsOTP)
+                {
+                    ModelState.AddModelError("OTPNotExists", "This OTP is not exists");
+                    return View();
+                }
+            }
+            var _Password = Register.Models.EncryptPassword.textToEncrypt(changeP.Password);
+            SqlConnection conn = new SqlConnection(cnnString);
+            conn.Open();
+            SqlCommand dCmd = new SqlCommand("sp_ChangePass", conn);
+            dCmd.CommandType = CommandType.StoredProcedure;
+            dCmd.Parameters.AddWithValue("@changep", _Password);
+            dCmd.Parameters.AddWithValue("@Email", changeP.EmailId);
+            dCmd.ExecuteNonQuery();
+            conn.Close();
+            //var _Password = Register.Models.EncryptPassword.textToEncrypt(changeP.Password);
+            //var userdb = dB.UserMs.FirstOrDefault(x => x.Email == pass.EmailId);
+            ////dB.UserMs.Add(objUsr);
+            //dB.SaveChanges();
+
+            ////var userdb = dB.UserMs.FirstOrDefault(x => x.Password == changeP.Password);
+            ////var _passWord = Register.Models.EncryptPassword.textToEncrypt(changeP.Password);
+            ////userdb.Password = changeP.Password;
+            ////dB.SaveChanges();
+            return RedirectToAction("Login", "Register");
         }
         
     }
